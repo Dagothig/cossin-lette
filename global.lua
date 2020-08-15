@@ -36,3 +36,29 @@ function pairsByKeys (t, f)
         return a[i]
     end
 end
+
+function table.index(tbl, obj)
+    return table.search(tbl, function (other) return other == obj end)
+end
+
+function table.search(tbl, fn)
+    for i = 1, #tbl do
+        if fn(tbl[i]) then
+            return i
+        end
+    end
+end
+
+function table.push(tbl, obj)
+    tbl[#tbl + 1] = obj
+end
+
+aabb = {}
+
+function aabb.overlap(lhs, rhs)
+    return (
+        lhs.min[1] < rhs.max[1] and
+        rhs.min[1] < lhs.max[1] and
+        lhs.min[2] < rhs.max[2] and 
+        rhs.min[2] < lhs.max[2])
+end
