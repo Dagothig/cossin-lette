@@ -1,8 +1,19 @@
 return function(cell_size)
     local sparse = {}
 
+    function sparse.get_comparator(obj)
+        return function(other)
+            for i = 1, math.min(#other, #obj) do
+                if other[i] > obj[i] then
+                    return true
+                end
+            end
+            return false
+        end
+    end
+
     function sparse.indices(aabb)
-        return 
+        return
             { math.floor(aabb.min[1] / cell_size) + 1, math.floor(aabb.min[2] / cell_size) + 1 },
             { math.ceil(aabb.max[1] / cell_size), math.ceil(aabb.max[2] / cell_size) }
     end
@@ -37,11 +48,24 @@ return function(cell_size)
         end
     end
 
-    function sparse.region(region)
+    function sparse.region(region, loose)
         local cells_iter = sparse.cells(region)
         local _, _, cell = cells_iter()
         local i = 1
         local found = {}
+        if loose then
+            return function()
+                while cell do
+                    while i <= #cell do
+                        local element = cell[i]
+                        i = i + 1
+                        return element
+                    end
+                    _, _, cell = cells_iter()
+                end
+            end
+        end
+
         return function()
             while cell do
                 while i <= #cell do
@@ -59,9 +83,9 @@ return function(cell_size)
         end
     end
 
-    function sparse.insert(obj)
-        local search_fn = function (other) return other > obj end
-        for _, _, cell in sparse.cells(obj, true) do
+    function sparse.insert(aabb)
+        local search_fn = sparse.get_comparator(obj)
+        for _, _, cell in sparse.cells(aabb, true) do
             table.insert(cell, table.search(cell, search_fn) or 1, obj)
         end
     end
@@ -72,18 +96,18 @@ return function(cell_size)
         end
     end
 
-    function sparse.update(obj, new)
+    function sparse.update(obj, new_aabb)
         local old_min, old_max = sparse.indices(obj)
         local new_min, new_max = sparse.indices(new)
-        local search_fn = function (other) return other > obj end
+        local search_fn = sparse.get_comparator(obj)
         for i, j, cell in sparse.cells(obj) do
-            local inside_old = 
+            local inside_old =
                 i >= old_min[1] and
                 i <= old_max[1] and
                 j >= old_min[2] and
                 j <= old_max[2]
 
-            local inside_new = 
+            local inside_new =
                 i >= new_min[1] and
                 i <= new_max[1] and
                 j >= new_min[2] and
@@ -112,6 +136,6 @@ return function(cell_size)
         end
         obj.min, obj.max = new.min, new.max
     end
-    
+
     return sparse
 end

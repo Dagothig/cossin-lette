@@ -53,12 +53,45 @@ function table.push(tbl, obj)
     tbl[#tbl + 1] = obj
 end
 
+function table.get(tbl, key, fn)
+    local val = tbl[key]
+    if not val then
+        val = fn()
+        tbl[key] = val
+    end
+    return val
+end
+
+iter = {}
+
+function iter.single(x)
+    return function()
+        local next = x
+        x = nil
+        return next
+    end
+end
+
+vec2 = {}
+
+function vec2.sub(lhs, rhs)
+    return { lhs[1] - rhs[1], lhs[2] - rhs[2] }
+end
+
+function vec2.add(lhs, rhs)
+    return { lhs[1] + rhs[1], lhs[2] + rhs[2] }
+end
+
+function vec2.eq(lhs, rhs)
+    return lhs[1] == rhs[1] and lhs[2] == rhs[2]
+end
+
 aabb = {}
 
 function aabb.overlap(lhs, rhs)
-    return (
+    return not rhs.min and aabb.contains(lhs, rhs) or (
         lhs.min[1] < rhs.max[1] and
         rhs.min[1] < lhs.max[1] and
-        lhs.min[2] < rhs.max[2] and 
+        lhs.min[2] < rhs.max[2] and
         rhs.min[2] < lhs.max[2])
 end
