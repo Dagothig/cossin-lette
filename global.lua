@@ -37,8 +37,16 @@ function pairsByKeys (t, f)
     end
 end
 
+function table.new()
+    return {}
+end
+
 function table.index(tbl, obj)
-    return table.search(tbl, function (other) return other == obj end)
+    for i = 1, #tbl do
+        if tbl[i] == obj then
+            return i
+        end
+    end
 end
 
 function table.search(tbl, fn)
@@ -72,6 +80,16 @@ function iter.single(x)
     end
 end
 
+function iter.table(iter)
+    local i = 1
+    local tbl = {}
+    for x in iter do
+        tbl[i] = x
+        i = i + 1
+    end
+    return tbl
+end
+
 vec2 = {}
 
 function vec2.sub(lhs, rhs)
@@ -88,10 +106,18 @@ end
 
 aabb = {}
 
+function aabb.eq(lhs, rhs)
+    return vec2.eq(lhs[1], rhs[1]) and vec2.eq(lhs[2], rhs[2])
+end
+
+function aabb.contains(box, pt)
+    return (
+        box[1][1] < pt[1] and pt[1] < box[2][1] and
+        box[1][2] < pt[2] and pt[2] < box[2][2])
+end
+
 function aabb.overlap(lhs, rhs)
-    return not rhs.min and aabb.contains(lhs, rhs) or (
-        lhs.min[1] < rhs.max[1] and
-        rhs.min[1] < lhs.max[1] and
-        lhs.min[2] < rhs.max[2] and
-        rhs.min[2] < lhs.max[2])
+    return (
+        lhs[1][1] < rhs[2][1] and rhs[1][1] < lhs[2][1] and
+        lhs[1][2] < rhs[2][2] and rhs[1][2] < lhs[2][2])
 end

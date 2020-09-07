@@ -19,7 +19,7 @@ function love.load()
         pos = { 160, 160 },
         sprite = { src = 'cossin' },
         animator = {},
-        actor = { speed = 0 },
+        actor = { speed = 3 },
         body = { shape = { type = 'circle', size = 20 } },
         keys = {
             up = { type = "y", value = 1 },
@@ -29,6 +29,15 @@ function love.load()
         },
         input = {}
     })
+
+    for i = 1, 1000 do
+        cur.entities.add({
+            name = 'cossin2',
+            pos = { math.random(0, 1000), math.random(0, 1000) },
+            sprite = { src = 'cossin' }
+        })
+    end
+
 end
 
 function love.keypressed(key)

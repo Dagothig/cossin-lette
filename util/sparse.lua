@@ -1,140 +1,102 @@
+local next_sparse_id = 1
 return function(cell_size)
-    local sparse = {}
+    local sparse = { id = next_sparse_id }
+    next_sparse_id = next_sparse_id + 1
 
-    function sparse.get_comparator(obj)
-        return function(other)
-            for i = 1, math.min(#other, #obj) do
-                if other[i] > obj[i] then
-                    return true
-                end
-            end
-            return false
-        end
-    end
-
-    function sparse.indices(aabb)
+    function sparse.indices(box)
         return
-            { math.floor(aabb.min[1] / cell_size) + 1, math.floor(aabb.min[2] / cell_size) + 1 },
-            { math.ceil(aabb.max[1] / cell_size), math.ceil(aabb.max[2] / cell_size) }
+            { math.floor(box[1][1] / cell_size) + 1, math.floor(box[1][2] / cell_size) + 1 },
+            { math.ceil(box[2][1] / cell_size), math.ceil(box[2][2] / cell_size) }
     end
 
-    function sparse.cells(region, create_cells)
-        local cell_min, cell_max = sparse.indices(region)
-        local i, j = cell_min[1] - 1, cell_min[2]
-        local strip = nil
+    function sparse.cells(box, create_cells)
+        local min, max = sparse.indices(box)
+        local i, j = min[1], min[2] - 1
         return function()
             while true do
-                if j > cell_max[2] or not strip then
-                    i, j = i + 1, cell_min[2]
-                    strip = sparse[i]
-                    if create_cells and not strip then
-                        strip = {}
-                        sparse[i] = strip
+                j = j + 1
+                while j > max[2] do
+                    i, j = i + 1, min[2]
+                    if i > max[1] then
+                        return nil
                     end
                 end
-                if i > cell_max[1] then
-                    return nil
-                end
-                local cell = strip and strip[j]
-                if create_cells and not cell then
-                    cell = {}
-                    strip[j] = cell
-                end
-                j = j + 1
-                if cell then
-                    return i, j - 1, cell
+                if sparse[i] or create_cells then
+                    local strip = table.get(sparse, i, table.new)
+                    if strip[j] or create_cells then
+                        if i < min[1] or i > max[1] then
+                            (nil)()
+                        end
+                        if j < min[2] or j > max[2] then
+                            (nil)()
+                        end
+                        return table.get(strip, j, table.new), i, j
+                    end
                 end
             end
         end
     end
 
-    function sparse.region(region, loose)
-        local cells_iter = sparse.cells(region)
-        local _, _, cell = cells_iter()
-        local i = 1
+    function sparse.region(box, loose)
+        local iter = sparse.cells(box)
+        local cell, i, j = iter()
+        local k = 0
         local found = {}
-        if loose then
-            return function()
-                while cell do
-                    while i <= #cell do
-                        local element = cell[i]
-                        i = i + 1
-                        return element
-                    end
-                    _, _, cell = cells_iter()
-                end
-            end
-        end
-
         return function()
             while cell do
-                while i <= #cell do
-                    local element = cell[i]
-                    i = i + 1
-                    if not found[element] and aabb.overlap(region, element) then
-                        found[element] = true
-                        return element
+                k = k + 1
+                while k > #cell do
+                    cell, i, j = iter()
+                    k = 1
+                    if not cell then
+                        return nil
                     end
                 end
-                _, _, cell = cells_iter()
-                i = 1
+                local element = cell[k]
+                if not found[element] and (loose or aabb.overlap(box, element.aabb)) then
+                    found[element] = true
+                    return element, i, j, k
+                end
             end
-
         end
     end
 
-    function sparse.insert(aabb)
-        local search_fn = sparse.get_comparator(obj)
-        for _, _, cell in sparse.cells(aabb, true) do
-            table.insert(cell, table.search(cell, search_fn) or 1, obj)
+    function sparse.insert(obj)
+        for cell, i, j in sparse.cells(obj.aabb, true) do
+            cell[#cell + 1] = obj
         end
+        obj[sparse.id] = { obj.aabb, obj.pos }
     end
 
-    function sparse.remove(obj)
-        for _, _, cell in sparse.cells(obj) do
+    function sparse.remove(obj, aabb)
+        for cell in sparse.cells(aabb) do
             table.remove(cell, table.index(cell, obj))
         end
+        obj[sparse.id] = nil
     end
 
-    function sparse.update(obj, new_aabb)
-        local old_min, old_max = sparse.indices(obj)
-        local new_min, new_max = sparse.indices(new)
-        local search_fn = sparse.get_comparator(obj)
-        for i, j, cell in sparse.cells(obj) do
-            local inside_old =
-                i >= old_min[1] and
-                i <= old_max[1] and
-                j >= old_min[2] and
-                j <= old_max[2]
+    function sparse.update(obj)
+        local entry = obj[sparse.id]
+        local old_aabb, old_pos = entry[1], entry[2]
+        if aabb.eq(old_aabb, obj.aabb) and vec2.eq(old_pos, obj.pos) then
+            return
+        else
+            entry[1], entry[2] = obj.aabb, obj.pos
+        end
 
-            local inside_new =
-                i >= new_min[1] and
-                i <= new_max[1] and
-                j >= new_min[2] and
-                j <= new_max[2]
-
-            if inside_old and not inside_new then
+        local new_min, new_max = sparse.indices(obj.aabb)
+        for cell, i, j in sparse.cells(old_aabb) do
+            if i < new_min[1] or new_max[1] < i or j < new_min[2] or new_max[2] < j then
                 table.remove(cell, table.index(cell, obj))
             end
         end
-        for i, j, cell in sparse.cells(new, true) do
-            local inside_old =
-                i >= old_min[1] and
-                i <= old_max[1] and
-                j >= old_min[2] and
-                j <= old_max[2]
 
-            local inside_new =
-                i >= new_min[1] and
-                i <= new_max[1] and
-                j >= new_min[2] and
-                j <= new_max[2]
-
-            if not inside_old and inside_new then
-                table.insert(cell, table.search(cell, search_fn) or 1, obj)
+        local old_min, old_max = sparse.indices(old_aabb)
+        for cell, i, j in sparse.cells(obj.aabb, true) do
+            if i < old_min[1] or old_max[1] < i or j < old_min[2] or old_max[2] < j then
+                cell[#cell + 1] = obj
             end
         end
-        obj.min, obj.max = new.min, new.max
     end
 
     return sparse

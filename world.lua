@@ -125,7 +125,7 @@ function physics.update(world, dt)
     for entity in world.by('body') do
         local pos, physics = entity.pos, entity.physics
         if pos and physics then
-            pos[1], pos[2] = physics:getWorldCenter()
+            entity.pos = { physics:getWorldCenter() }
         end
     end
 end
@@ -167,8 +167,8 @@ function sheets.set.sprite(world, entity)
         sheet.src = src
         -- Process sheet entries to establish derived info and flags.
         for _, entry in ipairs(sheet) do
-            local img = imgs.get(world, entry.src)
-            local width, height = img:getDimensions()
+            entry.img = imgs.get(world, entry.src)
+            local width, height = entry.img:getDimensions()
             entry.frame_time = 1 / entry.fps
             entry.tiles_count = width / entry.size[1]
             entry.flags = entry.flags or {}
@@ -246,10 +246,14 @@ function sheets.update(world, dt)
     end
 end
 
+function sheets.set.animator(world, entity)
+    entity.animator.flags = entity.animator.flags or {}
+end
+
 aabbs = { name = 'aabbs', set = {}, unset = {} }
 
 function aabbs.load(world)
-    world.sparse = sparse(4)
+    world.sparse = sparse(64)
     world.by_aabb = world.sparse.region
 end
 
@@ -262,19 +266,18 @@ function aabbs.for_pos_and_sprite(pos, sprite)
     local entry = sprite.sheet[sprite.entry]
     local min = vec2.sub(pos, entry.decal)
     local max = vec2.add(pos, entry.size)
-    return min, max
+    return { min, max }
 end
 
 function aabbs.set.sprite(world, entity)
-    local pos, sprite = entity.pos, entity.sprite
-    if pos and sprite and sprite.sheet then
-        local min, max = aabbs.for_pos_and_sprite(pos, sprite)
-        world.components.set(entity, 'aabb', { min = min, max = max })
+    local pos, sprite, aabb = entity.pos, entity.sprite, entity.aabb
+    if pos and sprite and sprite.sheet and not aabb then
+        world.components.set(entity, 'aabb', aabbs.for_pos_and_sprite(pos, sprite))
     end
 end
 
 function aabbs.set.aabb(world, entity)
-    world.sparse.insert(entity, entity.aabb)
+    world.sparse.insert(entity)
 end
 
 function aabbs.unset.sprite(world, entity)
@@ -283,6 +286,7 @@ end
 
 function aabbs.unset.aabb(world, entity)
     world.sparse.remove(entity.aabb)
+    entity.sparse_pos = nil
 end
 
 aabbs.set.pos = aabbs.set.sprite
@@ -290,13 +294,8 @@ aabbs.unset.pos = aabbs.unset.sprite
 
 function aabbs.update(world, dt)
     for entity in world.by('aabb') do
-        local aabb, pos, sprite = entity.aabb, entity.pos, entity.sprite
-        local min, max = aabbs.for_pos_and_sprite(pos, sprite)
-        if not vec2.eq(min, max) then
-            local new = { min = min, max = max }
-            world.sparse.update(entity, new)
-            entity.aabb = new
-        end
+        entity.aabb = aabbs.for_pos_and_sprite(entity.pos, entity.sprite)
+        world.sparse.update(entity)
     end
 end
 
@@ -304,9 +303,9 @@ sprite_renderer = { name = 'sprite_renderer' }
 
 function sprite_renderer.update(world, dt)
     for entity in world.by('animator') do
-        local animator, sprite, sheet = entity.animator, entity.sprite, entity.sheet
-        if sprite and sheet then
-            local entry = sheet[sprite.entry]
+        local animator, sprite = entity.animator, entity.sprite
+        if sprite and sprite.sheet then
+            local entry = sprite.sheet[sprite.entry]
             animator.time = (animator.time or 0) + dt
             while animator.time > entry.frame_time do
                 animator.time = animator.time - entry.frame_time
@@ -317,8 +316,12 @@ function sprite_renderer.update(world, dt)
 end
 
 function sprite_renderer.draw(world)
-    local width, height = love.window.getMode()
-    for entity in world.by_aabb({ min = { 0, 0 }, max = { width, height } }) do
+    local w, h = love.window.getMode()
+    local to_render = iter.table(world.by_aabb({ { 0, 0 }, { w, h } }))
+    table.sort(to_render, function(lhs, rhs)
+        return lhs.pos[2] < rhs.pos[2]
+    end)
+    for _, entity in ipairs(to_render) do
         local pos, sprite = entity.pos, entity.sprite
         if sprite then
             local sheet = sprite.sheet
