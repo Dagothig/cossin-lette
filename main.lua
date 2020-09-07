@@ -1,5 +1,13 @@
 require('global')
-require('world')
+
+local world = require('world')
+local input_handler = require('systems/input_handler')
+local actor = require('systems/actor')
+local physics = require('systems/physics')
+local imgs = require('systems/imgs')
+local sheets = require('systems/sheets')
+local aabbs = require('systems/aabbs')
+local sprite_renderer = require('systems/sprite_renderer')
 
 cur = world()
 
@@ -33,8 +41,9 @@ function love.load()
     for i = 1, 1000 do
         cur.entities.add({
             name = 'cossin2',
-            pos = { math.random(0, 1000), math.random(0, 1000) },
-            sprite = { src = 'cossin' }
+            pos = { math.random(0, 3000), math.random(0, 3000) },
+            sprite = { src = 'cossin' },
+            body = { shape = { type = 'circle', size = 20 } },
         })
     end
 

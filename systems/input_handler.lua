@@ -1,29 +1,26 @@
-local input_handler = {}
+local input_handler = { name = 'input_handler', set = {} }
 
-function input_handler.keypressed(components, key)
-    for entity, input in pairs(components.inputs) do
-        local actor = components.actors[entity]
-        local entry = input.keys[key]
-        if actor and entry then
-            actor.input[entry.type] = actor.input[entry.type] + entry.value
+function input_handler.keypressed(world, key)
+    for entity in world.by('keys') do
+        local entry, input = entity.keys[key], entity.input
+        if entry and input then
+            input[entry.type] = input[entry.type] + entry.value
         end
     end
 end
 
-function input_handler.update(components, dt)
-    for entity, input in pairs(components.inputs) do
-        local actor = components.actors[entity]
-        if actor then
-            for type, value in pairs(actor.input) do
-                if value then
-                    actor.input[type] = 0
-                end
-            end
-            for key, entry in pairs(input.keys) do
+function input_handler.update(world, dt)
+    for entity in world.by('input') do
+        local input, keys = entity.input, entity.keys
+        -- Reset input
+        for type, value in pairs(input) do
+            input[type] = 0
+        end
+        -- Check active key states
+        if keys then
+            for key, entry in pairs(keys) do
                 if love.keyboard.isDown(key) then
-                    if entry.value then 
-                        actor.input[entry.type] = actor.input[entry.type] + entry.value
-                    end
+                    input[entry.type] = input[entry.type] + entry.value
                 end
             end
         end

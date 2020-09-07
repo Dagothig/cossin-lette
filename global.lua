@@ -1,3 +1,5 @@
+PIXEL_PER_METER = 32
+
 function dump(o, pre)
     pre = pre or ''
     if type(o) == 'table' then
