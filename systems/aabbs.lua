@@ -14,7 +14,7 @@ end
 function aabbs.for_pos_and_sprite(pos, sprite)
     local entry = sprite.sheet[sprite.entry]
     local min = vec2.sub(pos, entry.decal)
-    local max = vec2.add(pos, entry.size)
+    local max = vec2.add(min, entry.size)
     return { min, max }
 end
 
@@ -43,8 +43,10 @@ aabbs.unset.pos = aabbs.unset.sprite
 
 function aabbs.update(world, dt)
     for entity in world.by('aabb') do
-        entity.aabb = aabbs.for_pos_and_sprite(entity.pos, entity.sprite)
-        world.sparse.update(entity)
+        if entity.sprite then
+            entity.aabb = aabbs.for_pos_and_sprite(entity.pos, entity.sprite)
+            world.sparse.update(entity)
+        end
     end
 end
 

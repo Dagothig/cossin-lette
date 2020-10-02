@@ -24,9 +24,9 @@ function actor.update(world, dt)
         -- Apply movement to body
         if physics then
             if actor.state.moving then
-                entity.physics:applyLinearImpulse(
-                    math.cos(actor.state.dir) * actor.speed * 32,
-                    -math.sin(actor.state.dir) * actor.speed * 32)
+                entity.physics:applyForce(
+                    math.cos(actor.state.dir) * actor.speed * DAMPING,
+                    -math.sin(actor.state.dir) * actor.speed * DAMPING)
             end
         end
     end

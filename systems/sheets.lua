@@ -18,11 +18,11 @@ function sheets.set.sprite(world, entity)
     sprite.strip = sprite.strip or 1
     sprite.tile = sprite.tile or 1
     sprite.sheet = table.get(world.sheets, src, function()
-        local sheet = require('img/' .. src)
+        local sheet = require('img/' .. src .. '/sheet')
         sheet.src = src
         -- Process sheet entries to establish derived info and flags.
         for _, entry in ipairs(sheet) do
-            entry.img = imgs.get(world, entry.src)
+            entry.img = imgs.get(world, src .. '/' .. entry.src)
             local width, height = entry.img:getDimensions()
             entry.frame_time = 1 / entry.fps
             entry.tiles_count = width / entry.size[1]
@@ -36,9 +36,12 @@ function sheets.set.sprite(world, entity)
                 -- Create the entries
                 for x = 1, entry.tiles_count do
                     local quad = love.graphics.newQuad(
-                        (x - 1) * entry.size[1], (y - 1) * entry.size[2],
-                        entry.size[1], entry.size[2],
-                        width, height)
+                        (x - 1) * entry.size[1],
+                        (y - 1) * entry.size[2],
+                        entry.size[1],
+                        entry.size[2],
+                        width,
+                        height)
                     local tile = { quad = quad, scale = { 1, 1 }}
                     table.push(strip.tiles, tile)
                 end
@@ -61,6 +64,11 @@ function sheets.set.sprite(world, entity)
         end
         return sheet
     end)
+end
+
+function sheets.set.animator(world, entity)
+    entity.animator.flags = entity.animator.flags or {}
+    entity.animator.time = entity.animator.time or 0
 end
 
 function sheets.matching_flags(to_match, flags)
@@ -94,15 +102,18 @@ function sheets.update(world, dt)
             if sprite.entry ~= entry_idx or sprite.strip ~= strip_idx then
                 sprite.tile = 1
                 animator.time = 0
+                sprite.entry = entry_idx
+                sprite.strip = strip_idx
+            else
+                local entry = sheet[sprite.entry]
+                animator.time = animator.time + dt
+                while animator.time > entry.frame_time do
+                    animator.time = animator.time - entry.frame_time
+                    sprite.tile = (sprite.tile % entry.tiles_count) + 1
+                end
             end
-            sprite.entry = entry_idx
-            sprite.strip = strip_idx
         end
     end
-end
-
-function sheets.set.animator(world, entity)
-    entity.animator.flags = entity.animator.flags or {}
 end
 
 return sheets

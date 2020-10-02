@@ -28,7 +28,10 @@ return function()
     world.fn('update')
     world.fn('draw')
 
-    function world.systems.add(system)
+    function world.systems.add(system, other, ...)
+        if type(system) == 'string' then
+            system = require('systems/' .. system)
+        end
         table.push(world.systems, system)
         for top_key, tbl in pairs(world.systems.filtered) do
             local is_root = top_key == 'root'
@@ -44,6 +47,9 @@ return function()
                     end
                 end
             end
+        end
+        if other then
+            world.systems.add(other, ...)
         end
     end
 

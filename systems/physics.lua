@@ -4,7 +4,7 @@ function physics.shapes.circle(body, body_physics)
     local shape = love.physics.newCircleShape(body.shape.size)
     local fixture = love.physics.newFixture(body_physics, shape, 1)
     body_physics:setFixedRotation(true)
-    body_physics:setLinearDamping(32)
+    body_physics:setLinearDamping(DAMPING)
 end
 
 function physics.load(world)
@@ -38,7 +38,7 @@ function physics.update(world, dt)
     -- Update positions
     for entity in world.by('body') do
         local pos, physics = entity.pos, entity.physics
-        if pos and physics then
+        if pos and physics and physics:isAwake() then
             entity.pos = { physics:getWorldCenter() }
         end
     end

@@ -1,4 +1,5 @@
 PIXEL_PER_METER = 32
+DAMPING = 32
 
 function dump(o, pre)
     pre = pre or ''
@@ -106,6 +107,18 @@ function vec2.eq(lhs, rhs)
     return lhs[1] == rhs[1] and lhs[2] == rhs[2]
 end
 
+function vec2.mul(pt, x)
+    return { pt[1] * x, pt[2] * x }
+end
+
+function vec2.interpolate(lhs, rhs, scale)
+    local inverse = 1 - scale
+    return {
+        lhs[1] * inverse + rhs[1] * scale,
+        lhs[2] * inverse + rhs[2] * scale
+    }
+end
+
 aabb = {}
 
 function aabb.eq(lhs, rhs)
@@ -123,3 +136,5 @@ function aabb.overlap(lhs, rhs)
         lhs[1][1] < rhs[2][1] and rhs[1][1] < lhs[2][1] and
         lhs[1][2] < rhs[2][2] and rhs[1][2] < lhs[2][2])
 end
+
+font = love.graphics.newFont('fonts/Montserrat-Medium.ttf')
