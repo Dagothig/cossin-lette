@@ -19,6 +19,10 @@ function dump(o, pre)
     end
 end
 
+function trace()
+    print(debug.traceback())
+end
+
 function cpy(t)
     local t2 = {}
     for k,v in pairs(t) do t2[k] = v end
@@ -73,6 +77,20 @@ function table.get(tbl, key, fn)
     return val
 end
 
+function table.batch(tbl, size)
+    local batches = {}
+    local batch = nil
+    for i = 1, #tbl do
+        if not batch or #batch == size then
+            batch = {}
+            batches[#batches + 1] = batch
+        end
+        batch[#batch + 1] = tbl[i]
+    end
+
+    return batches
+end
+
 iter = {}
 
 function iter.single(x)
@@ -83,12 +101,14 @@ function iter.single(x)
     end
 end
 
-function iter.table(iter)
+function iter.table(iter, filter)
     local i = 1
     local tbl = {}
     for x in iter do
-        tbl[i] = x
-        i = i + 1
+        if not filter or filter(x) then
+            tbl[i] = x
+            i = i + 1
+        end
     end
     return tbl
 end
@@ -135,6 +155,29 @@ function aabb.overlap(lhs, rhs)
     return (
         lhs[1][1] < rhs[2][1] and rhs[1][1] < lhs[2][1] and
         lhs[1][2] < rhs[2][2] and rhs[1][2] < lhs[2][2])
+end
+
+systems = { set = {}, unset = {} }
+
+function systems.set.all(system, components, fn)
+    local composite_fn = function(world, entity)
+        for i = 1, #components do
+            if not entity[components[i]] then
+                return
+            end
+        end
+        fn(world, entity)
+    end
+
+    for i = 1, #components do
+        system.set[components[i]] = composite_fn
+    end
+end
+
+function systems.unset.any(system, components, fn)
+    for i = 1, #components do
+        system.unset[components[i]] = fn
+    end
 end
 
 font = love.graphics.newFont('fonts/Montserrat-Medium.ttf')

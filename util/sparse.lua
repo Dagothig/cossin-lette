@@ -68,7 +68,13 @@ return function(cell_size)
         obj[sparse.id] = { obj.aabb, obj.pos }
     end
 
-    function sparse.remove(obj, aabb)
+    function sparse.remove(obj)
+        local entry = obj[sparse.id]
+        if not entry then
+            return
+        end
+
+        local aabb = entry[1]
         for cell in sparse.cells(aabb) do
             table.remove(cell, table.index(cell, obj))
         end

@@ -6,6 +6,7 @@ return function()
     function game.on_start(payload, done)
         game.world = world()
         game.world.systems.add(
+            'events',
             'input_handler',
             'actor',
             'physics',
@@ -14,37 +15,63 @@ return function()
             'tilesets',
             'aabbs',
             'renderer',
-            'ui')
+            'ui',
+            'physics_renderer')
 
         game.world.load()
 
-        game.world.entities.add{
+        local cossin = game.world.entities.add{
             name = 'cossin',
             pos = { 160, 160 },
             sprite = { src = 'cossin' },
             animator = {},
             actor = { speed = 240 },
-            body = { shape = { type = 'circle', size = 20 } },
+            body = {
+                shape = { type = 'circle', size = 20 }
+            },
             keys = {
                 up = { type = "y", value = 1 },
                 left = { type = "x", value = -1 },
                 right = { type = "x", value = 1 },
                 down = { type = "y", value = -1 },
-                space = { type = "interaction", value = true }
+                space = { type = "interaction", value = 1 }
             },
             input = {},
-            camera = { draw_aabb = true }
+            camera = {}
         }
 
-        for i = 1, 1000 do
-            game.world.entities.add{
-                name = 'autrecossin',
-                pos = { math.random(0, 3000), math.random(0, 3000) },
-                sprite = { src = 'cossin' },
-                body = { shape = { type = 'circle', size = 20 } },
-                actor = {}
+        local cossinInteraction = game.world.entities.add{
+            name = 'interaction',
+            body = {
+                shape = { type = 'circle', size = 40 },
+                sensor = { target = cossin, offset = { 10, 0 } }
             }
-        end
+        }
+
+        local autre = game.world.entities.add{
+            name = 'autrecossin',
+            pos = { 120, 120 },
+            sprite = { src = 'cossin' },
+            animator = {},
+            actor = { speed = 240 },
+            body = { shape = { type = 'circle', size = 20 } },
+            script = {
+                interaction = function(world, entity, other)
+                    print('interaction', other.name)
+                end,
+                exit = function(world, entity, other)
+                    print('exit', other.name)
+                end
+            }
+        }
+
+        local autreSensor = game.world.entities.add{
+            name = 'autrecossin_range',
+            body = {
+                shape = { type = 'circle', size = 80 },
+                sensor = { target = autre }
+            }
+        }
 
         game.world.entities.add{
             name = 'tiles',

@@ -1,10 +1,23 @@
-local input_handler = { name = 'input_handler', set = {} }
+local events = require('systems/events')
+
+local input_handler = {
+    name = 'input_handler',
+    set = {}
+}
 
 function input_handler.keypressed(world, key)
     for entity in world.by('keys') do
-        local entry, input = entity.keys[key], entity.input
-        if entry and input then
-            input[entry.type] = input[entry.type] + entry.value
+        local entry = entity.keys[key]
+        if entry then
+            local input = entity.input
+            if input then
+                input[entry.type] = (input[entry.type] or 0) + entry.value
+            end
+
+            local sensor = entity.sensors and entity.sensors[entry.type]
+            if sensor and sensor.physics then
+                events.trigger_colliding(world, entry.type, entity, sensor)
+            end
         end
     end
 end

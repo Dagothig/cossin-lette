@@ -34,7 +34,7 @@ function aabbs.unset.sprite(world, entity)
 end
 
 function aabbs.unset.aabb(world, entity)
-    world.sparse.remove(entity.aabb)
+    world.sparse.remove(entity)
     entity.sparse_pos = nil
 end
 

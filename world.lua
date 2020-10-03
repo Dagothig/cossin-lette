@@ -19,6 +19,16 @@ return function()
                 system[key](world, ...)
             end
         end
+        for _, system in ipairs(world.systems) do
+            if system[key] then
+                table.push(world.systems.filtered.root[key], system)
+            end
+        end
+    end
+
+    function world.unfn(key)
+        world.systems.filtered.root[key] = nil
+        world[key] = nil
     end
 
     world.fn('load')
@@ -54,12 +64,12 @@ return function()
     end
 
     function world.entities.add(entity)
-        table.push(world.entities, entity)
+        local added = {}
+        table.push(world.entities, added)
         for key, component in pairs(entity) do
-            for _, system in ipairs(world.systems.filtered.set[key] or {}) do
-                system.set[key](world, entity)
-            end
+            world.components.set(added, key, component)
         end
+        return added
     end
 
     function world.entities.remove(entity)
@@ -88,8 +98,9 @@ return function()
         for i = 1, #world.entities do
             local entity = world.entities[i]
             if entity.to_remove then
+                print(entity.name)
                 for key, component in pairs(entity) do
-                    for system, fn in ipairs(world.systems.filtered.unset[key] or {}) do
+                    for _, system in ipairs(world.systems.filtered.unset[key] or {}) do
                         system.unset[key](world, entity)
                     end
                 end
@@ -103,15 +114,20 @@ return function()
         end
     end
 
-    function world.by(key)
+    function world.by(...)
+        local keys = { ... }
         local i, n = 1, #world.entities
         return function()
+            ::continue::
             while i <= n do
                 local entity = world.entities[i]
                 i = i + 1
-                if entity[key] then
-                    return entity
+                for _, key in ipairs(keys) do
+                    if not entity[key] then
+                        goto continue
+                    end
                 end
+                return entity
             end
         end
     end

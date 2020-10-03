@@ -34,7 +34,7 @@ end
 
 function actor.set.actor(world, entity)
     local actor = entity.actor
-    actor.state = actor.state or {}
+    actor.state = actor.state or { moving = false, dir = -math.pi/2 }
 end
 
 function actor.set.input(world, entity)

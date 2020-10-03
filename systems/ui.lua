@@ -37,6 +37,7 @@ function ui.set.ui(world, entity)
 end
 
 function ui.draw(world)
+    love.graphics.setColor(1, 1, 1)
     for entity in world.by('ui') do
         local ui, pos, size = entity.ui, entity.pos, entity.size
         local pane = ui.pane
@@ -78,6 +79,10 @@ function ui.draw(world)
         end
     end
     love.graphics.setColor(1, 1, 1)
+end
+
+function ui.say(world, entity, text)
+
 end
 
 return ui
