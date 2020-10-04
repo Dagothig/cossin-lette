@@ -1,6 +1,5 @@
 local ui = { name = 'ui', set = {} }
 local weak_table = require('util/weak_table')
-local imgs = require('systems/imgs')
 
 function ui.load(world)
     world.panes = weak_table()
@@ -14,7 +13,7 @@ function ui.set.ui(world, entity)
     local ui = entity.ui
     ui.pane = table.get(world.panes, ui.src, function()
         local pane = { src = ui.src }
-        pane.img = imgs.get(world, pane.src .. '.png')
+        pane.img = world.get.img(pane.src .. '.png')
         local width, height = pane.img:getDimensions()
         local tw, th = width / 3, height / 3
 
@@ -62,7 +61,7 @@ function ui.draw(world)
 
     love.graphics.setColor(0, 0, 0)
     love.graphics.setFont(font)
-    for entity in world.by('text') do
+    for entity in world.by('text', 'pos') do
         local text, ui, pos, size = entity.text, entity.ui, entity.pos, entity.size
         local x, y = pos[1], pos[2]
 

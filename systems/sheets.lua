@@ -1,5 +1,4 @@
 local weak_table = require('util/weak_table')
-local imgs = require('systems/imgs')
 
 local sheets = { name = 'sheets', set = {} }
 
@@ -22,7 +21,7 @@ function sheets.set.sprite(world, entity)
         sheet.src = src
         -- Process sheet entries to establish derived info and flags.
         for _, entry in ipairs(sheet) do
-            entry.img = imgs.get(world, src .. '/' .. entry.src)
+            entry.img = world.get.img(src .. '/' .. entry.src)
             local width, height = entry.img:getDimensions()
             entry.frame_time = 1 / entry.fps
             entry.tiles_count = width / entry.size[1]

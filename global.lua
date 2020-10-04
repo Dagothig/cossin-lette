@@ -93,6 +93,10 @@ end
 
 iter = {}
 
+function iter.empty()
+    return nil
+end
+
 function iter.single(x)
     return function()
         local next = x

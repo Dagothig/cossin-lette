@@ -27,50 +27,57 @@ return function()
             animator = {},
             actor = { speed = 240 },
             body = {
-                shape = { type = 'circle', size = 20 }
+                shape = { type = 'circle', radius = 20 }
             },
             keys = {
                 up = { type = "y", value = 1 },
                 left = { type = "x", value = -1 },
                 right = { type = "x", value = 1 },
                 down = { type = "y", value = -1 },
-                space = { type = "interaction", value = 1 }
+                space = { type = "interaction" }
             },
             input = {},
             camera = {}
         }
 
-        local cossinInteraction = game.world.entities.add{
-            name = 'interaction',
-            body = {
-                shape = { type = 'circle', size = 40 },
-                sensor = { target = cossin, offset = { 10, 0 } }
-            }
+        game.world.entities.add{
+            name = 'cossin_interaction',
+            body = { shape = { type = 'circle', radius = 40 }, sensor = 'interaction' },
+            attach = { target = cossin, offset = { 20, 0 } }
         }
 
-        local autre = game.world.entities.add{
+        local autrecossin = game.world.entities.add{
             name = 'autrecossin',
             pos = { 120, 120 },
             sprite = { src = 'cossin' },
             animator = {},
             actor = { speed = 240 },
-            body = { shape = { type = 'circle', size = 20 } },
+            body = { shape = { type = 'circle', radius = 20 } },
             script = {
                 interaction = function(world, entity, other)
-                    print('interaction', other.name)
+                    print(entity.name, other.name)
                 end,
-                exit = function(world, entity, other)
-                    print('exit', other.name)
+                sensor_exit = function(world, entity, sensor, other)
+                    print(entity.name, other.name)
                 end
             }
         }
 
-        local autreSensor = game.world.entities.add{
+        game.world.entities.add{
             name = 'autrecossin_range',
             body = {
-                shape = { type = 'circle', size = 80 },
-                sensor = { target = autre }
-            }
+                shape = { type = 'circle', radius = 80 },
+                sensor = true
+            },
+            attach = { target = autrecossin }
+        }
+
+        game.world.entities.add{
+            name = 'test',
+            size = { 240, 120 },
+            ui = { src = 'ui/pane' },
+            attach = { target = autre, offset = { 0, 20 } },
+            text = { value = "Woo! This is text to be displayed... And \nchanges lines." }
         }
 
         game.world.entities.add{
@@ -93,14 +100,6 @@ return function()
                     { { { 3, 1, 1 } } }
                 }
             }
-        }
-
-        game.world.entities.add{
-            name = 'test',
-            pos = { 250, 30 },
-            size = { 240, 120 },
-            ui = { src = 'ui/pane' },
-            text = { value = "Woo! This is text to be displayed... And \nchanges lines." }
         }
     end
 

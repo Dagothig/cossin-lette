@@ -31,4 +31,9 @@ function events.trigger_target(world, event, payload, entity)
     end
 end
 
+function events.push(world, entity, message)
+    local script = entity.script
+    script[#script + 1] = message
+end
+
 return events

@@ -4,12 +4,15 @@ return function()
             filtered = {
                 set = {},
                 unset = {},
+                events = {},
                 root = {}
             }
         },
 
         entities = {},
         components = {},
+        events = {},
+        get = {},
     }
 
     function world.fn(key)
@@ -98,7 +101,6 @@ return function()
         for i = 1, #world.entities do
             local entity = world.entities[i]
             if entity.to_remove then
-                print(entity.name)
                 for key, component in pairs(entity) do
                     for _, system in ipairs(world.systems.filtered.unset[key] or {}) do
                         system.unset[key](world, entity)
@@ -129,6 +131,12 @@ return function()
                 end
                 return entity
             end
+        end
+    end
+
+    function world.events.trigger(type, ...)
+        for _, system in ipairs(world.systems.filtered.events[type] or {}) do
+            system.events[type](world, ...)
         end
     end
 

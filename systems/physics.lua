@@ -1,13 +1,36 @@
-local events = require('systems/events')
-
-local physics = { name = 'physics', shapes = {}, set = {}, unset = {} }
+local physics = {
+    name = 'physics',
+    shapes = {},
+    set = {},
+    unset = {},
+    events = {}
+}
 
 function physics.shapes.circle(body, body_physics)
-    local shape = love.physics.newCircleShape(body.shape.size)
+    local shape = love.physics.newCircleShape(body.shape.radius)
     local fixture = love.physics.newFixture(body_physics, shape, body.sensor and 0.000000001 or 1)
     body_physics:setFixedRotation(true)
     body_physics:setLinearDamping(DAMPING)
     return fixture
+end
+
+function physics.entities_in_contact(entity)
+    local physics = entity.physics
+    local contacts = physics:getContacts()
+    local i = 1
+    return function()
+        while i <= #contacts do
+            local contact = contacts[i]
+            i = i + 1
+            if contact:isTouching() then
+                local fa, fb = contact:getFixtures()
+                local ba, bb = fa:getBody(), fb:getBody()
+                local ea, eb = ba:getUserData(), bb:getUserData()
+                local other = ea == entity and eb or ea
+                return other
+            end
+        end
+    end
 end
 
 function physics.load(world)
@@ -18,24 +41,14 @@ function physics.load(world)
             local entityA = a:getBody():getUserData()
             local entityB = b:getBody():getUserData()
             if entityA and entityB and entityA ~= entityB then
-                if entityA.body and entityA.body.enter then
-                    entityA.body.enter(world, entityB)
-                end
-                if entityB.body and entityB.body.enter then
-                    entityB.body.enter(world, entityA)
-                end
+                world.events.trigger('collision_start', entityA, entityB)
             end
         end,
         function(a, b)
             local entityA = a:getBody():getUserData()
             local entityB = b:getBody():getUserData()
             if entityA and entityB and entityA ~= entityB then
-                if entityA.body and entityA.body.exit then
-                    entityA.body.exit(world, entityB)
-                end
-                if entityB.body and entityB.body.exit then
-                    entityB.body.exit(world, entityA)
-                end
+                world.events.trigger('collision_end', entityA, entityB)
             end
         end)
 end
@@ -45,52 +58,91 @@ function physics.unload(world)
     world.physics = nil
 end
 
+function physics.events.collision_start(world, entityA, entityB)
+    if entityA.body and entityA.body.sensor and entityA.attach then
+        world.events.trigger('sensor_enter', entityA.attach.target, entityA, entityB)
+    end
+    if entityB.body and entityB.body.sensor and entityB.attach then
+        world.events.trigger('sensor_enter', entityB.attach.target, entityB, entityA)
+    end
+end
+
+function physics.events.collision_end(world, entityA, entityB)
+    if entityA.body and entityA.body.sensor and entityA.attach then
+        world.events.trigger('sensor_exit', entityA.attach.target, entityA, entityB)
+    end
+    if entityB.body and entityB.body.sensor and entityB.attach then
+        world.events.trigger('sensor_exit', entityB.attach.target, entityB, entityA)
+    end
+end
+
+function physics.events.input_start(world, entity, type)
+    for _, attached in pairs(entity.attached or {}) do
+        if attached.body and attached.body.sensor == type then
+            for other in physics.entities_in_contact(attached) do
+                if other ~= entity then
+                    print(type, other.name, entity.name)
+                    world.events.trigger(type, other, entity)
+                end
+            end
+        end
+    end
+end
+
 function physics.set.body(world, entity)
     local body = entity.body
-    local sensor = body.sensor
-    local sensor_offset = sensor and (sensor.offset or { 0, 0 })
-    local pos = entity.pos or sensor and vec2.add(sensor.target.pos, sensor_offset) or { 0, 0 }
+    local pos = entity.pos or { 0, 0 }
 
     local body_physics = love.physics.newBody(world.physics, pos[1], pos[2], "dynamic")
     body_physics:setUserData(entity)
 
     local fixture = physics.shapes[body.shape.type](body, body_physics)
-
     if body.sensor then
         fixture:setSensor(true)
-    end
-
-    if sensor then
-        love.physics.newWeldJoint(
-            sensor.target.physics,
-            body_physics,
-            pos[1] + sensor_offset[1], pos[2] + sensor_offset[2],
-            pos[1], pos[2],
-            false, 0)
-
-        if not sensor.target.sensors then
-            world.components.set(sensor.target, 'sensors', {})
-        end
-        sensor.target.sensors[entity.name] = entity
-
-        body.enter = function(world, other)
-            events.trigger_target(world, 'enter', other, sensor.target)
-        end
-
-        body.exit = function(world, other)
-            events.trigger_target(world, 'exit', other, sensor.target)
-        end
+        fixture:setCategory(2)
+        fixture:setMask(2)
+    else
+        fixture:setCategory(1)
     end
 
     world.components.set(entity, 'physics', body_physics)
 end
 
 function physics.unset.body(world, entity)
-    if entity.sensor and entity.sensor.target then
-        entity.sensor.target.sensors[entity.name] = nil
-    end
     entity.physics:destroy()
     world.components.unset(entity, 'physics')
+end
+
+systems.set.all(physics, { 'attach', 'physics' }, function(world, entity)
+    local attach, physics = entity.attach, entity.physics
+    local offset = attach.offset or { 0, 0 }
+    local attach_pos = entity.attach.target and entity.attach.target.pos or { 0, 0 }
+    local pos = vec2.add(entity.pos or attach_pos, offset)
+
+    physics:setPosition(pos[1], pos[2])
+
+    attach.physics = love.physics.newWeldJoint(
+        attach.target.physics,
+        entity.physics,
+        pos[1], pos[2],
+        pos[1], pos[2],
+        false, 0)
+
+    if not attach.target.attached then
+        world.components.set(attach.target, 'attached', {})
+    end
+    attach.target.attached[entity.name] = entity
+end)
+
+function physics.unset.attach(world, entity)
+    if entity.physics and entity.attach.physics then
+        entity.attach.physics:destroy()
+        entity.attach.physics = nil
+    end
+
+    if (entity.attach.target.attached) then
+        entity.attach.target.attached[entity.name] = nil
+    end
 end
 
 function physics.update(world, dt)

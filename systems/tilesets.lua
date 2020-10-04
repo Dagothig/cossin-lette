@@ -1,5 +1,4 @@
 local weak_table = require('util/weak_table')
-local imgs = require('systems/imgs')
 
 local tilesets = { name = 'sheets', set = {} }
 
@@ -19,7 +18,7 @@ function tilesets.set.tiles(world, entity)
         local tw, th = tileset.size[1], tileset.size[2]
         tileset.src = src
         for _, entry in ipairs(tileset) do
-            entry.img = imgs.get(world, src .. '/' .. entry.src)
+            entry.img = world.get.img(src .. '/' .. entry.src)
             local width, height = entry.img:getDimensions()
             if entry.fps then
                 entry.frame_time = 1 / entry.fps

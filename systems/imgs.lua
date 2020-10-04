@@ -4,16 +4,16 @@ local imgs = { name = 'imgs' }
 
 function imgs.load(world)
     world.imgs = weak_table()
+    function world.get.img(src)
+        return table.get(world.imgs, src, function()
+            return love.graphics.newImage('img/' .. src)
+        end)
+    end
 end
 
 function imgs.unload(world)
     world.imgs = nil
-end
-
-function imgs.get(world, src)
-    return table.get(world.imgs, src, function()
-        return love.graphics.newImage('img/' .. src)
-    end)
+    world.get.img = nil
 end
 
 return imgs
