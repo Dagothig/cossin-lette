@@ -81,7 +81,6 @@ function physics.events.input_start(world, entity, type)
         if attached.body and attached.body.sensor == type then
             for other in physics.entities_in_contact(attached) do
                 if other ~= entity then
-                    print(type, other.name, entity.name)
                     world.events.trigger(type, other, entity)
                 end
             end

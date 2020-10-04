@@ -161,26 +161,46 @@ function aabb.overlap(lhs, rhs)
         lhs[1][2] < rhs[2][2] and rhs[1][2] < lhs[2][2])
 end
 
+fns = {}
+
+function fns.override(obj, key, fn)
+    local existing_fn = obj[key]
+    obj[key] = existing_fn
+        and function(...)
+            existing_fn(...)
+            fn(...)
+        end
+        or fn
+end
+
 systems = { set = {}, unset = {} }
 
 function systems.set.all(system, components, fn)
-    local composite_fn = function(world, entity)
+    local composite_fn = function(world, entity, ...)
         for i = 1, #components do
             if not entity[components[i]] then
                 return
             end
         end
-        fn(world, entity)
+        fn(world, entity, ...)
     end
 
     for i = 1, #components do
-        system.set[components[i]] = composite_fn
+        fns.override(system.set, components[i], composite_fn)
     end
 end
 
-function systems.unset.any(system, components, fn)
+function systems.unset.all(system, components, fn)
+    local composite_fn = function(world, entity, ...)
+        for i = 1, #components do
+            if not entity[components[i]] then
+                return
+            end
+        end
+        fn(world, entity, ...)
+    end
     for i = 1, #components do
-        system.unset[components[i]] = fn
+        fns.override(system.unset, components[i], composite_fn)
     end
 end
 

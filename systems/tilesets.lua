@@ -1,6 +1,6 @@
 local weak_table = require('util/weak_table')
 
-local tilesets = { name = 'sheets', set = {} }
+local tilesets = { name = 'sheets', set = {}, unset = {} }
 
 function tilesets.load(world)
     world.tilesets = weak_table()
@@ -46,37 +46,48 @@ function tilesets.set.tiles(world, entity)
         end
         return tileset
     end)
+end
 
-    local pos = entity.pos
-    if pos then
-        for z = 1, #tiles do
-            for y = 1, #tiles[z] do
-                for x = 1, #tiles[z][y] do
-                    local tpos = vec2.add(pos, {
-                        (x - 1) * tiles.tileset.size[1],
-                        (y - 1) * tiles.tileset.size[2]
-                    })
-                    local decal = vec2.mul(tiles.tileset.size, 0.5)
-                    local aabb_min = vec2.sub(tpos, decal)
-                    local aabb_max = vec2.add(aabb_min, tiles.tileset.size)
-                    if z == 1 then
-                        decal[2] = decal[2] - tpos[2]
-                        tpos[2] = 0
-                    else
-                        local offset = (z - 2) * tiles.tileset.size[2]
-                        tpos[2] = tpos[2] + offset
-                        decal[2] = decal[2] + offset
-                    end
-                    world.entities.add({
+systems.set.all(tilesets, { 'tiles', 'pos' }, function(world, entity)
+    local tiles, pos = entity.tiles, entity.pos
+
+    tiles.entities = {}
+
+    for z = 1, #tiles do
+        for y = 1, #tiles[z] do
+            for x = 1, #tiles[z][y] do
+                local tpos = vec2.add(pos, {
+                    (x - 1) * tiles.tileset.size[1],
+                    (y - 1) * tiles.tileset.size[2]
+                })
+                local decal = vec2.mul(tiles.tileset.size, 0.5)
+                local aabb_min = vec2.sub(tpos, decal)
+                local aabb_max = vec2.add(aabb_min, tiles.tileset.size)
+                if z == 1 then
+                    decal[2] = decal[2] - tpos[2]
+                    tpos[2] = 0
+                else
+                    local offset = (z - 2) * tiles.tileset.size[2]
+                    tpos[2] = tpos[2] + offset
+                    decal[2] = decal[2] + offset
+                end
+                tiles.entities[#tiles.entities + 1] =
+                    world.entities.add{
                         pos = tpos,
                         aabb = { aabb_min, aabb_max },
                         tile = { entity, tiles[z][y][x], decal }
-                    })
-                end
+                    }
             end
         end
     end
-end
+end)
+
+systems.unset.all(tilesets, { 'tiles', 'pos' }, function(world, entity)
+    local tiles = entity.tiles
+    for i = 1, #tiles.entities do
+        world.entities.remove(tiles.entities[i])
+    end
+end)
 
 function tilesets.update(world, dt)
     for _, tileset in pairs(world.tilesets) do

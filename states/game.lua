@@ -6,7 +6,6 @@ return function()
     function game.on_start(payload, done)
         game.world = world()
         game.world.systems.add(
-            'events',
             'input_handler',
             'actor',
             'physics',
