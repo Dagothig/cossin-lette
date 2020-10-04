@@ -33,14 +33,34 @@ function ui.set.ui(world, entity)
 
         return pane
     end)
+
+    if ui.decorations then
+        for i = 1, #ui.decorations  do
+            local decoration = ui.decorations[i]
+            decoration.img = world.get.img(decoration.src .. '.png')
+            decoration.size = { decoration.img:getDimensions() }
+        end
+    end
 end
 
-function ui.draw(world)
+function ui.anchor_position(type, ps, pe, size)
+    if type == 'start' then
+        return ps, size
+    elseif type == 'end' then
+        return pe, 0
+    elseif type == 'center' then
+        return (ps + pe) / 2, size/2
+    else
+        return 0, 0
+    end
+end
+
+function ui.draw_camera(world)
     love.graphics.setColor(1, 1, 1)
     for entity in world.by('ui') do
-        local ui, pos, size = entity.ui, entity.pos, entity.size
-        local pane = ui.pane
+        local pos, size = entity.pos, entity.size
         if pos and size then
+            local pane, decorations = entity.ui.pane, entity.ui.decorations
             local x1, y1 = pos[1], pos[2]
             local x2, y2 = x1 + pane.tw, y1 + pane.th
             local dx, dy = size[1] - 2 * pane.tw, size[2] - 2 * pane.th
@@ -56,6 +76,20 @@ function ui.draw(world)
             love.graphics.draw(pane.img, pane.quads.bl, x1, y3, 0, 1, 1)
             love.graphics.draw(pane.img, pane.quads.bs, x2, y3, 0, dx, 1)
             love.graphics.draw(pane.img, pane.quads.br, x3, y3, 0, 1, 1)
+
+            if decorations then
+                for i = 1, #decorations do
+                    local decoration = decorations[i]
+                    local x, ox = ui.anchor_position(decoration.anchor[1], x2, x3, decoration.size[1])
+                    local y, oy = ui.anchor_position(decoration.anchor[2], y2, y3, decoration.size[2])
+                    love.graphics.draw(
+                        decoration.img,
+                        x, y,
+                        0,
+                        1, 1,
+                        ox, oy)
+                end
+            end
         end
     end
 

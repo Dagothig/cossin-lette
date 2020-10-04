@@ -14,8 +14,10 @@ return function()
             'tilesets',
             'aabbs',
             'renderer',
-            'ui',
-            'physics_renderer')
+            'ui'
+            --'physics_renderer',
+            --'aabb_renderer'
+        )
 
         game.world.load()
 
@@ -54,10 +56,10 @@ return function()
             body = { shape = { type = 'circle', radius = 20 } },
             script = {
                 interaction = function(world, entity, other)
-                    print(entity.name, other.name)
+                    print('interaction', entity.name, other.name)
                 end,
                 sensor_exit = function(world, entity, sensor, other)
-                    print(entity.name, other.name)
+                    print('left', entity.name, other.name)
                 end
             }
         }
@@ -71,11 +73,19 @@ return function()
             attach = { target = autrecossin }
         }
 
-        game.world.entities.add{
+        local bubble = game.world.entities.add{
             name = 'test',
-            size = { 240, 120 },
-            ui = { src = 'ui/pane' },
-            attach = { target = autre, offset = { 0, 20 } },
+            size = { 200, 100 },
+            ui = {
+                src = 'ui/bubble',
+                decorations = {
+                    { anchor = { 'center', 'end' }, src = 'ui/guedille' }
+                }
+            },
+            attach = {
+                target = autrecossin,
+                offset = { -100, -180 },
+            },
             text = { value = "Woo! This is text to be displayed... And \nchanges lines." }
         }
 

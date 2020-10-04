@@ -134,9 +134,13 @@ return function()
         end
     end
 
-    function world.events.trigger(type, ...)
+    function world.events.trigger(type, entity, ...)
         for _, system in ipairs(world.systems.filtered.events[type] or {}) do
-            system.events[type](world, ...)
+            system.events[type](world, entity, ...)
+        end
+
+        if entity.script and entity.script[type] then
+            entity.script[type](world, entity, ...)
         end
     end
 

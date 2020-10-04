@@ -44,7 +44,6 @@ function renderer.draw(world)
 end
 
 function renderer.draw_camera(world, entity, x, y, w, h)
-    local camera = entity.camera
     local to_render = iter.table(world.by_aabb{
         { love.graphics.inverseTransformPoint(x, y) },
         { love.graphics.inverseTransformPoint(x + w, y + h) }
@@ -88,17 +87,6 @@ function renderer.draw_camera(world, entity, x, y, w, h)
                     1, 1,
                     decal[1], decal[2])
             end
-        end
-
-        if camera.draw_aabb then
-            local aabb = entity.aabb
-            love.graphics.setColor(1, 0, 0)
-            love.graphics.line(
-                aabb[1][1], aabb[1][2],
-                aabb[1][1], aabb[2][2],
-                aabb[2][1], aabb[2][2],
-                aabb[2][1], aabb[1][2],
-                aabb[1][1], aabb[1][2])
         end
     end
 end

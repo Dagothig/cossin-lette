@@ -1,9 +1,15 @@
 PIXEL_PER_METER = 32
 DAMPING = 32
 
-function dump(o, pre)
+function dump(o, pre, seen)
+    seen = seen or {}
     pre = pre or ''
     if type(o) == 'table' then
+        if seen[o] then
+            return '<recursive>'
+        end
+        seen[o] = true
+
         local s = '{'
         for k,v in pairs(o) do
             if type(k) ~= 'number' then
@@ -11,7 +17,7 @@ function dump(o, pre)
             else
                 k = ''
             end
-            s = s .. '\n  ' .. pre .. k .. dump(v, pre .. '  ') .. ','
+            s = s .. '\n  ' .. pre .. k .. dump(v, pre .. '  ', seen) .. ','
         end
         return s .. '\n' .. pre .. '}'
     else
