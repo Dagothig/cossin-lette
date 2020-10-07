@@ -42,6 +42,7 @@ function physics.load(world)
             local entityB = b:getBody():getUserData()
             if entityA and entityB and entityA ~= entityB then
                 world.events.trigger('collision_start', entityA, entityB)
+                world.events.trigger('collision_start', entityB, entityA)
             end
         end,
         function(a, b)
@@ -49,6 +50,7 @@ function physics.load(world)
             local entityB = b:getBody():getUserData()
             if entityA and entityB and entityA ~= entityB then
                 world.events.trigger('collision_end', entityA, entityB)
+                world.events.trigger('collision_end', entityB, entityA)
             end
         end)
 end
@@ -60,23 +62,19 @@ end
 
 function physics.events.collision_start(world, entityA, entityB)
     if entityA.body and entityA.body.sensor and entityA.attach then
-        world.events.trigger('sensor_enter', entityA.attach.target, entityA, entityB)
-    end
-    if entityB.body and entityB.body.sensor and entityB.attach then
-        world.events.trigger('sensor_enter', entityB.attach.target, entityB, entityA)
+        -- entity, source, sensor
+        world.events.trigger('sensor_enter', entityA.attach.target, entityB, entityA)
     end
 end
 
 function physics.events.collision_end(world, entityA, entityB)
     if entityA.body and entityA.body.sensor and entityA.attach then
-        world.events.trigger('sensor_exit', entityA.attach.target, entityA, entityB)
-    end
-    if entityB.body and entityB.body.sensor and entityB.attach then
-        world.events.trigger('sensor_exit', entityB.attach.target, entityB, entityA)
+        -- entity, source, sensor
+        world.events.trigger('sensor_exit', entityA.attach.target, entityB, entityA)
     end
 end
 
-function physics.events.input_start(world, entity, type)
+function physics.events.input_start(world, entity, source, type)
     for _, attached in pairs(entity.attached or {}) do
         if attached.body and attached.body.sensor == type then
             for other in physics.entities_in_contact(attached) do
@@ -126,21 +124,13 @@ systems.set.all(physics, { 'attach', 'physics' }, function(world, entity)
         pos[1], pos[2],
         pos[1], pos[2],
         false, 0)
-
-    if not attach.target.attached then
-        world.components.set(attach.target, 'attached', {})
-    end
-    attach.target.attached[entity.name] = entity
 end)
 
 function physics.unset.attach(world, entity)
-    if entity.physics and entity.attach.physics then
-        entity.attach.physics:destroy()
-        entity.attach.physics = nil
-    end
-
-    if (entity.attach.target.attached) then
-        entity.attach.target.attached[entity.name] = nil
+    local attach = entity.attach
+    if attach.physics then
+        attach.physics:destroy()
+        attach.physics = nil
     end
 end
 
@@ -154,7 +144,7 @@ function physics.update(world, dt)
                 entity.pos = { physics:getWorldCenter() }
             end
             if actor then
-                physics:setAngle(actor.state.dir and -actor.state.dir or 0)
+                physics:setAngle(actor.vars.dir and -actor.vars.dir or 0)
             end
         end
     end

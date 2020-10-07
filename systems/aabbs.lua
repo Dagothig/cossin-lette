@@ -32,6 +32,17 @@ function aabbs.set.attach(world, entity)
     if attach.target.pos then
         world.components.set(entity, 'pos', vec2.add(attach.target.pos, attach.offset or { 0, 0 }))
     end
+
+    if not attach.target.attached then
+        world.components.set(attach.target, 'attached', {})
+    end
+    attach.target.attached[entity] = entity
+end
+
+function aabbs.unset.attach(world, entity)
+    if entity.attach.target.attached then
+        entity.attach.target.attached[entity] = nil
+    end
 end
 
 function aabbs.set.aabb(world, entity)

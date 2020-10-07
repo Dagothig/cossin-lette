@@ -1,5 +1,7 @@
 PIXEL_PER_METER = 32
 DAMPING = 32
+MS_PER_LETTER_TIMEOUT = 50
+MS_PER_UNIT_TIMEOUT = 1000
 
 function dump(o, pre, seen)
     seen = seen or {}
@@ -147,6 +149,14 @@ function vec2.interpolate(lhs, rhs, scale)
         lhs[1] * inverse + rhs[1] * scale,
         lhs[2] * inverse + rhs[2] * scale
     }
+end
+
+function vec2.len2(vec)
+    return vec[1] * vec[1] + vec[2] * vec[2]
+end
+
+function vec2.len(vec)
+    return math.sqrt(vec2.len(vec))
 end
 
 aabb = {}

@@ -12,7 +12,7 @@ function input_handler.keypressed(world, key)
                 input[entry.type] = (input[entry.type] or 0) + entry.value
             end
 
-            world.events.trigger('input_start', entity, entry.type)
+            world.events.trigger('input_start', entity, entity, entry.type)
         end
     end
 end

@@ -1,11 +1,12 @@
 local world = require('world')
+local actor = require('systems/actor')
 
 return function()
     local game = { world = world() }
 
     function game.on_start(payload, done)
         game.world = world()
-        game.world.systems.add(
+        game.world.systems.add{
             'input_handler',
             'actor',
             'physics',
@@ -17,7 +18,7 @@ return function()
             'ui'
             --'physics_renderer',
             --'aabb_renderer'
-        )
+        }
 
         game.world.load()
 
@@ -52,16 +53,46 @@ return function()
             pos = { 120, 120 },
             sprite = { src = 'cossin' },
             animator = {},
-            actor = { speed = 240 },
-            body = { shape = { type = 'circle', radius = 20 } },
-            script = {
-                interaction = function(world, entity, other)
-                    print('interaction', entity.name, other.name)
-                end,
-                sensor_exit = function(world, entity, sensor, other)
-                    print('left', entity.name, other.name)
-                end
-            }
+            actor = {
+                speed = 240,
+                speech = 'bubble',
+                {
+                    vars = { barnak = true },
+                    interaction = {
+                        { 'look_at', 'entity', 'source' },
+                        { 'say', 'entity', "Hey!" },
+                        { 'look_at', 'entity' }
+                    }
+                },
+                {
+                    interaction = {
+                        { 'look_at', 'entity', 'source' },
+                        { 'say', 'entity', "Salut Cossin! Est-ce que tu as vu Georges? Il est pas trop beau" },
+                        { 'look_at', 'entity' },
+                        { 'var', 'barnak', true },
+                        { 'move_to', 'entity', { 120, 90 } },
+                        { 'wait', 3000 },
+                        { 'say', 'entity', "Entéka... BARNAK" },
+                        { 'move_to', 'entity', { 120, 120 } }
+                    },
+                    failure = {
+                        {
+                            { 'say', 'entity', "Woh!" },
+                            { 'move_to', 'entity', { 120, 120 } }
+                        },
+                        { 'say', 'entity', "M'a m'en rappeler!" }
+                    },
+                    unresponsive = {
+                        { 'say', 'entity', "Heille tu m'écoutes tu?" },
+                        { 'fail' }
+                    },
+                    leave = {
+                        { 'say', 'entity', "Oh heille, pars pas! J'ai des choses très importantes à te dire!" },
+                        { 'fail' }
+                    }
+                }
+            },
+            body = { shape = { type = 'circle', radius = 20 } }
         }
 
         game.world.entities.add{
@@ -73,8 +104,8 @@ return function()
             attach = { target = autrecossin }
         }
 
-        local bubble = game.world.entities.add{
-            name = 'test',
+        game.world.prefabs.bubble = {
+            name = 'bubble',
             size = { 200, 100 },
             ui = {
                 src = 'ui/bubble',
@@ -83,10 +114,9 @@ return function()
                 }
             },
             attach = {
-                target = autrecossin,
-                offset = { -100, -180 },
+                offset = { -100, -100 },
             },
-            text = { value = "Woo! This is text to be displayed... And \nchanges lines." }
+            text = {}
         }
 
         game.world.entities.add{

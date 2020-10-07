@@ -5,7 +5,7 @@ return function()
                 set = {},
                 unset = {},
                 events = {},
-                root = {}
+                root = { event = {} }
             }
         },
 
@@ -13,9 +13,10 @@ return function()
         components = {},
         events = {},
         get = {},
+        prefabs = {}
     }
 
-    function world.fn(key)
+    function world.fn(key, fn)
         world.systems.filtered.root[key] = {}
         world[key] = function(...)
             for _, system in ipairs(world.systems.filtered.root[key]) do
@@ -41,28 +42,27 @@ return function()
     world.fn('update')
     world.fn('draw')
 
-    function world.systems.add(system, other, ...)
-        if type(system) == 'string' then
-            system = require('systems/' .. system)
-        end
-        table.push(world.systems, system)
-        for top_key, tbl in pairs(world.systems.filtered) do
-            local is_root = top_key == 'root'
-            local for_system = is_root and system or system[top_key]
-            local for_world = world.systems.filtered[top_key]
-            if for_system then
-                for key, _ in pairs(is_root and for_world or for_system) do
-                    if not for_world[key] then
-                        for_world[key] = {}
-                    end
-                    if for_system[key] then
-                        table.push(for_world[key], system)
+    function world.systems.add(systems)
+        for _, system in ipairs(systems) do
+            if type(system) == 'string' then
+                system = require('systems/' .. system)
+            end
+            table.push(world.systems, system)
+            for top_key, tbl in pairs(world.systems.filtered) do
+                local is_root = top_key == 'root'
+                local for_system = is_root and system or system[top_key]
+                local for_world = world.systems.filtered[top_key]
+                if for_system then
+                    for key, _ in pairs(is_root and for_world or for_system) do
+                        if not for_world[key] then
+                            for_world[key] = {}
+                        end
+                        if for_system[key] then
+                            table.push(for_world[key], system)
+                        end
                     end
                 end
             end
-        end
-        if other then
-            world.systems.add(other, ...)
         end
     end
 
@@ -134,13 +134,25 @@ return function()
         end
     end
 
-    function world.events.trigger(type, entity, ...)
-        for _, system in ipairs(world.systems.filtered.events[type] or {}) do
-            system.events[type](world, entity, ...)
+    function world.prefabs.apply(prefab, entity)
+        for key, value in pairs(prefab) do
+            if type(value) == 'table' then
+                if not entity[key] then
+                    entity[key] = {}
+                end
+                world.prefabs.apply(value, entity[key])
+            else
+                entity[key] = value
+            end
         end
+    end
 
-        if entity.script and entity.script[type] then
-            entity.script[type](world, entity, ...)
+    function world.events.trigger(type, entity, source, ...)
+        for _, system in ipairs(world.systems.filtered.root.event) do
+            system.event(world, type, entity, source, ...)
+        end
+        for _, system in ipairs(world.systems.filtered.events[type] or {}) do
+            system.events[type](world, entity, source, ...)
         end
     end
 
