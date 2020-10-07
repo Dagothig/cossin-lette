@@ -16,7 +16,7 @@ return function()
             'aabbs',
             'renderer',
             'ui'
-            --'physics_renderer',
+            --'physics_renderer'
             --'aabb_renderer'
         }
 
@@ -67,31 +67,26 @@ return function()
                 {
                     interaction = {
                         { 'look_at', 'entity', 'source' },
-                        { 'say', 'entity', "Salut Cossin! Est-ce que tu as vu Georges? Il est pas trop beau" },
+                        { 'say', 'entity', "Salut Cossin! Est-ce que tu as vu Georges? Il est pas trop beau", { timeout_type = 'unresponsive' } },
                         { 'look_at', 'entity' },
                         { 'var', 'barnak', true },
-                        { 'move_to', 'entity', { 120, 90 } },
-                        { 'wait', 3000 },
-                        { 'say', 'entity', "Entéka... BARNAK" },
-                        { 'move_to', 'entity', { 120, 120 } }
+                        { 'move_to', 'entity', { 80, 80 } },
+                        { 'wait', 1 },
+                        { 'say', 'entity', "Entéka... BARNAK" }
                     },
                     failure = {
-                        {
-                            { 'say', 'entity', "Woh!" },
-                            { 'move_to', 'entity', { 120, 120 } }
-                        },
+                        { 'say', 'entity', "Woh!" },
                         { 'say', 'entity', "M'a m'en rappeler!" }
                     },
                     unresponsive = {
-                        { 'say', 'entity', "Heille tu m'écoutes tu?" },
-                        { 'fail' }
+                        { 'say', 'entity', "Heille tu m'écoutes tu?" }
                     },
-                    leave = {
-                        { 'say', 'entity', "Oh heille, pars pas! J'ai des choses très importantes à te dire!" },
-                        { 'fail' }
+                    sensor_exit = {
+                        { 'say', 'entity', "Oh heille, pars pas! J'ai des choses très importantes à te dire!" }
                     }
                 }
             },
+            move_target = { pos = { 120, 120 } },
             body = { shape = { type = 'circle', radius = 20 } }
         }
 
@@ -114,7 +109,7 @@ return function()
                 }
             },
             attach = {
-                offset = { -100, -100 },
+                offset = { -100, -200 },
             },
             text = {}
         }

@@ -1,4 +1,4 @@
-local actor = { name = 'actor', set = {}, actions = {} }
+local actor = { name = 'actor', set = {}, actions = {}, events = {} }
 
 function actor.update(world, dt)
     for entity in world.by('actor') do
@@ -10,18 +10,22 @@ function actor.update(world, dt)
         local move_target = entity.move_target
 
         if look_target then
-            local look_diff = vec2.sub(look_target.pos, entity.pos)
-            actor.vars.dir = math.atan2(look_diff[2], look_diff[1])
+            local look_diff = vec2.sub(look_target.target.pos, entity.pos)
+            actor.vars.dir = math.atan2(-look_diff[2], look_diff[1])
         end
 
         -- Update state from desire to be somewhere
         if move_target then
             local move_diff = vec2.sub(move_target.pos, entity.pos)
-            if vec2.len2(move_diff) < 0.25 then
+            if vec2.len2(move_diff) < 4 then
+                if actor.vars.moving then
+                    -- TODO SLOPPY
+                    world.events.trigger('arrival', entity, entity)
+                end
                 actor.vars.moving = false
             else
                 actor.vars.moving = true
-                actor.vars.dir = math.atan2(move_diff[2], move_diff[1])
+                actor.vars.dir = math.atan2(-move_diff[2], move_diff[1])
             end
         -- Update state from input
         elseif input then
@@ -72,72 +76,98 @@ function actor.set.input(world, entity)
     input.y = input.y or 0
 end
 
--- format { 'say', entity, text, { prefab = 'string', timeout = number } }
+function actor.find_attached_text(world, entity)
+    for _, other in pairs(entity.attached) do
+        if other.text then
+            return other
+        end
+    end
+end
+
+-- format { 'say', entity, text, { prefab = string, timeout = number, timeout_type = string } }
 actor.actions.say = {
-    start = function(world, entity, action, other)
-        local source_str, text, args = unpack(action, 2)
-        local source = actor.entity_for(world, entity, other, source_str)
-        entity.actor.action_source = source
+    start = function(world, entity, source, action)
+        local speaker_str, text, args = unpack(action, 2)
+        local speaker = actor.entity_for(world, entity, source, speaker_str)
+        local timeout = args and args.timeout or (#text * S_PER_LETTER_TIMEOUT + S_TEXT_BASE_TIMEOUT)
         world.entities.add(world.prefabs.apply(
-            world.prefabs[args and args.prefab or source.actor.speech],
+            world.prefabs[args and args.prefab or speaker.actor.speech],
             {
                 text = { value = text },
-                attach = { target = source }
+                attach = { target = speaker }
             }))
         world.components.set(entity, 'timer', {
-            remaining = args and args.timeout or #text * MS_PER_LETTER_TIMEOUT,
-            type = 'unresponsive'
+            remaining = timeout,
+            type = args and args.timeout_type or 'completion'
         })
     end,
-    interaction = function(world, entity)
-        local source = actor.entity_for(world, entity, other, source_str)
-        local text_entity = actor.find_attached_text(world, entity)
+    stop = function(world, entity, source, action)
+        local speaker_str, text, args = unpack(action, 2)
+        local speaker = actor.entity_for(world, entity, source, speaker_str)
+        local text_entity = actor.find_attached_text(world, speaker)
         world.components.unset(text_entity, 'text')
-        world.components.unset(entity)
-        world.events.trigger('completed', entity)
+        world.components.unset(entity, 'timer')
+    end,
+    interaction = function(world, entity, source)
+        world.events.trigger('completion', entity, source)
     end
 }
 
 -- format { 'move_to', entity, target }
 actor.actions.move_to = {
-    start = function(world, entity, action)
-        local source_str, pos = unpack(action, 2)
-        local source = actor.entity_for(world, entity, nil, source_str)
-        local current_pos = source.pos or pos
-        world.components.set(source, 'move_target', { pos = pos })
-        world.components.set(source, 'timer', {
-            remaining = vec2.len(vec2.sub(current_pos, pos)) * MS_PER_UNIT_TIMEOUT,
+    start = function(world, entity, source, action)
+        local mover_str, pos = action[2], action[3]
+        local mover = actor.entity_for(world, entity, source, mover_str)
+        local current_pos = mover.pos or pos
+        world.components.set(mover, 'move_target', { pos = pos })
+        print(vec2.len(vec2.sub(current_pos, pos)) * S_PER_UNIT_TIMEOUT)
+        world.components.set(mover, 'timer', {
+            remaining = vec2.len(vec2.sub(current_pos, pos)) * S_PER_UNIT_TIMEOUT + S_MOVE_BASE_TIMEOUT,
             type = 'failure'
         })
     end,
-    arrival = function(world, entity, action)
-        local source_str, pos = unpack(action, 2)
-        local source = actor.entity_for(world, entity, nil, source_str)
-        world.components.unset(source, 'move_target')
-        world.components.unset(source, 'timer')
-        world.events.trigger('completed', entity)
+    stop = function(world, entity, source, action)
+        local mover_str, pos = action[2], action[3]
+        local mover = actor.entity_for(world, entity, source, mover_str)
+        world.components.unset(mover, 'move_target')
+        world.components.unset(mover, 'timer')
+    end,
+    arrival = function(world, entity, source, action)
+        world.events.trigger('completion', entity, source)
     end
 }
 
--- format { 'fail' }
-actor.actions.fail = {
-    start = function(world, entity)
-        world.events.trigger('failure', entity)
-    end
-}
-
+-- format  { 'speak_to', looker, lookee }
 actor.actions.look_at = {
-    start = function(world, entity)
-        world.components.set(source, 'look_target')
-        world.events.trigger('completed', entity)
-    end
+    start = function(world, entity, source, action)
+        local looker_str, lookee_str = action[2], action[3]
+        local looker = actor.entity_for(world, entity, source, looker_str)
+        local lookee = actor.entity_for(world, entity, source, lookee_str)
+        if lookee then
+            world.components.set(looker, 'look_target', { target = lookee })
+        else
+            world.components.unset(looker, 'look_target')
+        end
+        world.events.trigger('completion', entity)
+    end,
 }
 
 actor.actions.var = {
-    start = function(world, entity, action)
+    start = function(world, entity, source, action)
         local key, value = action[2], action[3]
         entity.actor.vars[key] = value
-        world.events.trigger('completed', entity)
+        world.events.trigger('completion', entity)
+    end
+}
+
+actor.actions.wait = {
+    start = function(world, entity, source, action)
+        world.components.set(entity, 'timer', {
+            remaining = action[2], type = 'completion'
+        })
+    end,
+    stop = function(world, entity)
+        world.components.unset(entity, 'timer')
     end
 }
 
@@ -145,18 +175,24 @@ function actor.entity_for(world, entity, source, str)
     return str == 'entity' and entity or str == 'source' and source or nil
 end
 
-function actor.start_action(world, entity, source, action, ...)
-    action = action or entity.actor.actions[entity.actor.action_index]
-    if type(action[1]) == 'table' then
-        for i = 1, #action do
-            actor.start_action(world, entity, action[i], ...)
-        end
-    else
-        actor.actions[action[1]].start(world, entity, action, ...)
+function actor.get_action(world, entity)
+    return entity.actor.actions[entity.actor.action_index]
+end
+
+function actor.stop_action(world, entity, source)
+    local action = actor.get_action(world, entity)
+    print('stop', dump(action, nil, nil, { sep = '' }))
+    if action and actor.actions[action[1]].stop then
+        actor.actions[action[1]].stop(world, entity, source, action)
     end
 end
 
-function actor.complete_action(world, entity, other)
+function actor.start_action(world, entity, source, ...)
+    local action = actor.get_action(world, entity)
+    print('start', dump(action, nil, nil, { sep = '' }))
+    if action and actor.actions[action[1]].start then
+        actor.actions[action[1]].start(world, entity, source, action, ...)
+    end
 end
 
 function actor.state_match(state, vars)
@@ -178,20 +214,37 @@ end
 
 function actor.event(world, type, entity, source, ...)
     if entity.actor then
-        local next_action = entity.actor.actions[entity.actor.action_index]
-        if next_action then
-            if actor[next_action[1]][type] then
-                actor[next_action[1]][type](world, entity, source, next_action, ...)
+        local action = actor.get_action(world, entity)
+        if action then
+            if actor.actions[action[1]][type] then
+                actor.actions[action[1]][type](world, entity, source, action, ...)
                 return
             end
         end
 
         local state = actor.current_state(world, entity)
         if state and state[type] then
+            actor.stop_action(world, entity, source)
             entity.actor.actions = state[type]
             entity.actor.action_index = 1
-            actor.start_action(world, entity, source, nil, ...)
+            actor.start_action(world, entity, source, ...)
         end
+    end
+end
+
+function actor.events.completion(world, entity, source, ...)
+    print('completion', entity.name, source and source.name)
+    if entity.actor then
+        actor.stop_action(world, entity, source)
+        entity.actor.action_index = entity.actor.action_index + 1
+        actor.start_action(world, entity, source, ...)
+    end
+end
+
+function actor.events.failure(world, entity, source)
+    print('failure', entity.name, source and source.name)
+    if entity.actor then
+        actor.stop_action(world, entity, source)
     end
 end
 

@@ -1,9 +1,12 @@
 PIXEL_PER_METER = 32
 DAMPING = 32
-MS_PER_LETTER_TIMEOUT = 50
-MS_PER_UNIT_TIMEOUT = 1000
+S_PER_LETTER_TIMEOUT = 0.05
+S_TEXT_BASE_TIMEOUT = 1
+S_PER_UNIT_TIMEOUT = 0.25
+S_MOVE_BASE_TIMEOUT = 4
 
-function dump(o, pre, seen)
+function dump(o, pre, seen, args)
+    args = args or { sep = '\n' }
     seen = seen or {}
     pre = pre or ''
     if type(o) == 'table' then
@@ -19,9 +22,9 @@ function dump(o, pre, seen)
             else
                 k = ''
             end
-            s = s .. '\n  ' .. pre .. k .. dump(v, pre .. '  ', seen) .. ','
+            s = s .. args.sep .. '  ' .. pre .. k .. dump(v, pre .. '  ', seen, args) .. ','
         end
-        return s .. '\n' .. pre .. '}'
+        return s .. args.sep .. pre .. '}'
     else
         return tostring(o)
     end
@@ -156,7 +159,7 @@ function vec2.len2(vec)
 end
 
 function vec2.len(vec)
-    return math.sqrt(vec2.len(vec))
+    return math.sqrt(vec2.len2(vec))
 end
 
 aabb = {}

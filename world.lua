@@ -145,14 +145,15 @@ return function()
                 entity[key] = value
             end
         end
+        return entity
     end
 
     function world.events.trigger(type, entity, source, ...)
-        for _, system in ipairs(world.systems.filtered.root.event) do
-            system.event(world, type, entity, source, ...)
-        end
         for _, system in ipairs(world.systems.filtered.events[type] or {}) do
             system.events[type](world, entity, source, ...)
+        end
+        for _, system in ipairs(world.systems.filtered.root.event) do
+            system.event(world, type, entity, source, ...)
         end
     end
 
